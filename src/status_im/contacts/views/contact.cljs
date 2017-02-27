@@ -38,6 +38,4 @@
        [letter-view letter])
      [contact-inner-view {:contact contact :info info}]
      (when extended?
-       [options-btn contact extend-options])]
-    [view st/contact-separator-container
-     [view (get-in platform-specific [:component-styles :contacts :separator])]]]])
+       [options-btn contact extend-options])]]])

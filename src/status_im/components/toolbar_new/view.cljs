@@ -1,4 +1,4 @@
-(ns status-im.components.toolbar.view
+(ns status-im.components.toolbar-new.view
   (:require [re-frame.core :refer [subscribe dispatch]]
             [status-im.components.react :refer [view
                                                 icon
@@ -7,10 +7,11 @@
                                                 image
                                                 touchable-highlight]]
             [status-im.components.sync-state.gradient :refer [sync-state-gradient-view]]
-            [status-im.components.styles :refer [icon-back
+            [status-im.components.styles :refer [icon-default
                                                  icon-search]]
-            [status-im.components.toolbar.actions :as act]
-            [status-im.components.toolbar.styles :as st]
+            [status-im.components.context-menu :refer [context-menu]]
+            [status-im.components.toolbar-new.actions :as act]
+            [status-im.components.toolbar-new.styles :as st]
             [status-im.accessibility-ids :as id]
             [status-im.utils.platform :refer [platform-specific]]))
 
@@ -29,13 +30,13 @@
        (when-not hide-nav?
          (if nav-action
            [touchable-highlight {:on-press (:handler nav-action)}
-            [view (get-in platform-specific [:component-styles :toolbar-nav-action])
+            [view
              [image (:image nav-action)]]]
            [touchable-highlight {:on-press            #(dispatch [:navigate-back])
                                  :accessibility-label id/toolbar-back-button}
-            [view (get-in platform-specific [:component-styles :toolbar-nav-action])
-             [image {:source {:uri :icon_back}
-                     :style  icon-back}]]]))]
+            [view
+             [image {:source {:uri :icon_back_dark}
+                     :style  icon-default}]]]))]
       (or custom-content
           [view {:style st/toolbar-title-container}
            [text {:style st/toolbar-title-text
@@ -44,18 +45,25 @@
       [view (st/toolbar-actions-container (count actions) custom-action)
        (if actions
          (for [{action-image   :image
+                action-options :options
                 action-handler :handler} actions]
-           ^{:key (str "action-" action-image)}
-           [touchable-highlight {:on-press action-handler}
-            [view st/toolbar-action
-             [image action-image]]])
+           (with-meta
+             (cond (= action-image :blank)
+                   [view st/toolbar-action]
+                   action-options
+                   [context-menu
+                    [view st/toolbar-action
+                     [image action-image]]
+                    action-options]
+                   :else
+                   [touchable-highlight {:on-press action-handler}
+                    [view st/toolbar-action
+                     [image action-image]]])
+             {:key (str "action-" action-image)}))
          custom-action)]]
-     [sync-state-gradient-view]]))
-
-(defn- toolbar-search-submit [on-search-submit]
-  (let [text @(subscribe [:get-in [:toolbar-search :text]])]
-    (on-search-submit text)
-    (dispatch [:set-in [:toolbar-search :text] nil])))
+     [sync-state-gradient-view]
+     [view st/toolbar-border-container
+      [view st/toolbar-border]]]))
 
 (defn- toolbar-with-search-content [{:keys [show-search?
                                             search-placeholder
@@ -67,12 +75,9 @@
       {:style             st/toolbar-search-input
        :auto-focus        true
        :placeholder       search-placeholder
-       :return-key-type   "search"
-       :on-blur           #(dispatch [:set-in [:toolbar-search :show] nil])
-       :on-change-text    #(dispatch [:set-in [:toolbar-search :text] %])
-       :on-submit-editing #(toolbar-search-submit on-search-submit)}]
+       :on-change-text    #(dispatch [:set-in [:toolbar-search :text] %])}]
      [view
-      [text {:style st/toolbar-with-search-title
+      [text {:style st/toolbar-title-text
              :font  :toolbar-title}
        title]])])
 
@@ -83,12 +88,15 @@
                                    style
                                    on-search-submit]
                             :as   opts}]
-  (let [toggle-search-fn #(dispatch [:set-in [:toolbar-search :show] %])
-        actions          (if-not show-search?
-                           (into actions [(act/search #(toggle-search-fn search-key))]))]
-    [toolbar {:style          (merge st/toolbar-with-search style)
+  (let [toggle-search-fn #(do
+                            (dispatch [:set-in [:toolbar-search :show] %])
+                            (dispatch [:set-in [:toolbar-search :text] ""]))
+        actions          (when-not show-search?
+                           (into [(act/search #(toggle-search-fn search-key))] actions))]
+    [toolbar {:style          style
               :nav-action     (if show-search?
                                 (act/back #(toggle-search-fn nil))
                                 nav-action)
               :custom-content [toolbar-with-search-content opts]
               :actions        actions}]))
+

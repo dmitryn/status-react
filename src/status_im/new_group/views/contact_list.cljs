@@ -7,18 +7,24 @@
                                                 list-item]]
             [status-im.components.confirm-button :refer [confirm-button]]
             [status-im.components.status-bar :refer [status-bar]]
-            [status-im.components.toolbar.view :refer [toolbar-with-search]]
+            [status-im.components.toolbar-new.view :refer [toolbar-with-search]]
             [status-im.utils.listview :refer [to-datasource]]
             [status-im.new-group.views.contact :refer [new-group-contact]]
             [status-im.new-group.styles :as st]
+            [status-im.contacts.styles :as cst]
             [status-im.i18n :refer [label]]))
 
 (defn contact-list-toolbar [contacts-count show-search?]
   (toolbar-with-search
     {:show-search?       (= show-search? :contact-group-list)
      :search-key         :contact-group-list
-     :title              (str (label :t/new-group) " (" contacts-count ")")
+     :title              (str (label :t/new-group) " " contacts-count)
      :search-placeholder (label :t/search-for)}))
+
+(defn render-separator [_ row-id _]
+  (list-item ^{:key row-id}
+             [view cst/contact-item-separator-wrapper
+              [view cst/contact-item-separator]]))
 
 (defview contact-group-list []
   [contacts [:all-added-group-contacts-filtered]
@@ -32,6 +38,7 @@
      {:dataSource                (to-datasource contacts)
       :renderRow                 (fn [row _ _]
                                   (list-item ^{:key row} [new-group-contact row]))
+      :renderSeparator           render-separator
       :style                     st/contacts-list
       :keyboardShouldPersistTaps true}]]
    (when (pos? selected-contacts-count)
